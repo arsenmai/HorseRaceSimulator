@@ -1,20 +1,18 @@
-import java.io.*;
-import java.nio.file.*;
 import java.util.*;
-import java.util.stream.*;
+import java.util.stream.Collectors;
 
 public class Leaderboard {
-    public List<String> topHorses() {
-        try {
-            return Files.lines(Paths.get("race_results.csv"))
-                    .collect(Collectors.groupingBy(l -> l, Collectors.counting()))
-                    .entrySet().stream()
-                    .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
-                    .limit(5)
-                    .map(Map.Entry::getKey)
-                    .collect(Collectors.toList());
-        } catch (IOException e) {
-            return new ArrayList<>();
-        }
+    private Map<String, Integer> winCounts = new HashMap<>();
+
+    public void updateLeaderboard(String horseName, int wins) {
+        winCounts.put(horseName, wins);
+    }
+
+    public List<String> getTopHorses(int topN) {
+        return winCounts.entrySet().stream()
+            .sorted(Map.Entry.<String, Integer>comparingByValue(Comparator.reverseOrder()))
+            .limit(topN)
+            .map(e -> e.getKey() + " (" + e.getValue() + " wins)")
+            .collect(Collectors.toList());
     }
 }
