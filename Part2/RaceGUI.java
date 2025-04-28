@@ -1,4 +1,4 @@
-// RaceGUI.java – Finalized with refined track lanes and emoji symbols rendering
+// RaceGUI.java - Fully Refactored and Upgraded Version
 
 import javax.swing.*;
 import java.awt.*;
@@ -7,213 +7,222 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class RaceGUI extends JFrame {
-    private JPanel raceTrackPanel;
-    private JPanel horsePanel;
-    private JPanel trackPanel;
-    private JPanel shapePanel;
-    private JPanel controlPanel;
-    private JComboBox<String> trackShapeCombo;
-    private JSpinner laneSpinner, lengthSpinner;
-    private List<JComboBox<String>> breedCombos, colorCombos, saddleCombos, symbolCombos;
-    private List<Horse> horses;
-    private Timer raceTimer;
-    private int trackLength;
-    private int pixelScale = 12;
-    private int laneHeight = 60;
-    private JButton startButton;
+
+    private JPanel raceVisualPanel;
+    private javax.swing.Timer raceTimer;
+    private int[] horsePositions;
+    private boolean raceRunning = false;
+
+    private int laneCount = 3;
+    private int trackLength = 50;
+    private String trackShape = "Straight";
+    private String weatherCondition = "Dry";
+
+    private List<String> horses = new ArrayList<>();
+    private JComboBox<String> horseSelect;
+    private JTextArea statsArea;
+
+    private BettingSystem bettingSystem = new BettingSystem();
 
     public RaceGUI() {
-        setTitle("Horse Race Simulator");
-        setDefaultCloseOperation(EXIT_ON_CLOSE);
+        setTitle("Horse Racing Simulator");
+        setSize(1200, 700);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLayout(new BorderLayout());
-        setSize(1150, 850);
+
+        setupUI();
         setLocationRelativeTo(null);
-
-        horses = new ArrayList<>();
-
-        JPanel configContainer = new JPanel(new GridLayout(1, 3));
-        configContainer.add(createTrackPanel());
-        configContainer.add(createShapePanel());
-        configContainer.add(createHorsePanel());
-
-        raceTrackPanel = new JPanel() {
-            protected void paintComponent(Graphics g) {
-                super.paintComponent(g);
-                drawTrack(g);
-            }
-        };
-        raceTrackPanel.setPreferredSize(new Dimension(1000, 500));
-
-        controlPanel = new JPanel();
-        startButton = new JButton("Start Race");
-        startButton.setEnabled(false);
-        startButton.addActionListener(e -> startRace());
-        controlPanel.add(startButton);
-
-        add(configContainer, BorderLayout.NORTH);
-        add(new JScrollPane(raceTrackPanel), BorderLayout.CENTER);
-        add(controlPanel, BorderLayout.SOUTH);
-
         setVisible(true);
     }
 
-    private JPanel createTrackPanel() {
-        trackPanel = new JPanel(new GridLayout(3, 1));
-        trackPanel.setBorder(BorderFactory.createTitledBorder("Track Configuration"));
+    private void setupUI() {
+        JPanel mainPanel = new JPanel(new BorderLayout());
 
-        laneSpinner = new JSpinner(new SpinnerNumberModel(3, 1, 10, 1));
-        JPanel laneConfig = new JPanel();
-        laneConfig.add(new JLabel("Lanes:"));
-        laneConfig.add(laneSpinner);
+        JPanel customizationPanel = new JPanel(new GridLayout(1, 2));
+        customizationPanel.add(new TrackCustomizationPanel());
+        customizationPanel.add(new HorseCustomizationPanel());
 
-        lengthSpinner = new JSpinner(new SpinnerNumberModel(50, 10, 200, 5));
-        JPanel lengthConfig = new JPanel();
-        lengthConfig.add(new JLabel("Length:"));
-        lengthConfig.add(lengthSpinner);
+        raceVisualPanel = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                drawRace(g);
+            }
+        };
+        raceVisualPanel.setPreferredSize(new Dimension(1200, 300));
 
-        JButton confirmButton = new JButton("Confirm Settings");
-        confirmButton.addActionListener(e -> prepareHorses());
+        mainPanel.add(customizationPanel, BorderLayout.NORTH);
+        mainPanel.add(raceVisualPanel, BorderLayout.CENTER);
+        mainPanel.add(new StatisticsPanel(), BorderLayout.EAST);
+        mainPanel.add(new BettingPanel(), BorderLayout.WEST);
+        mainPanel.add(new RaceControlPanel(), BorderLayout.SOUTH);
 
-        trackPanel.add(laneConfig);
-        trackPanel.add(lengthConfig);
-        trackPanel.add(confirmButton);
-        return trackPanel;
+        add(mainPanel);
+
+        raceTimer = new javax.swing.Timer(100, e -> updateRace());
     }
 
-    private JPanel createShapePanel() {
-        shapePanel = new JPanel();
-        shapePanel.setBorder(BorderFactory.createTitledBorder("Track Shape"));
-        trackShapeCombo = new JComboBox<>(new String[]{"Straight", "Oval", "Zigzag", "Figure-eight", "Custom"});
-        shapePanel.add(new JLabel("Shape:"));
-        shapePanel.add(trackShapeCombo);
-        return shapePanel;
+    class TrackCustomizationPanel extends JPanel {
+        public TrackCustomizationPanel() {
+            setBorder(BorderFactory.createTitledBorder("Track Customization"));
+            setLayout(new GridLayout(2, 4));
+
+            add(new JLabel("Lane Count:"));
+            JSpinner laneSpinner = new JSpinner(new SpinnerNumberModel(3, 1, 10, 1));
+            laneSpinner.addChangeListener(e -> laneCount = (Integer) laneSpinner.getValue());
+            add(laneSpinner);
+
+            add(new JLabel("Track Length:"));
+            JSpinner lengthSpinner = new JSpinner(new SpinnerNumberModel(50, 10, 500, 10));
+            lengthSpinner.addChangeListener(e -> trackLength = (Integer) lengthSpinner.getValue());
+            add(lengthSpinner);
+
+            add(new JLabel("Track Shape:"));
+            JComboBox<String> shapes = new JComboBox<>(new String[]{"Straight", "Oval", "Figure-eight", "Zigzag"});
+            shapes.addActionListener(e -> trackShape = (String) shapes.getSelectedItem());
+            add(shapes);
+
+            add(new JLabel("Weather Condition:"));
+            JComboBox<String> conditions = new JComboBox<>(new String[]{"Dry", "Muddy", "Icy"});
+            conditions.addActionListener(e -> weatherCondition = (String) conditions.getSelectedItem());
+            add(conditions);
+        }
     }
 
-    private JPanel createHorsePanel() {
-        horsePanel = new JPanel();
-        horsePanel.setBorder(BorderFactory.createTitledBorder("Horse Customization"));
-        horsePanel.setLayout(new BoxLayout(horsePanel, BoxLayout.Y_AXIS));
-        return horsePanel;
-    }
+    class HorseCustomizationPanel extends JPanel {
+        public HorseCustomizationPanel() {
+            setBorder(BorderFactory.createTitledBorder("Horse Customization"));
+            setLayout(new GridLayout(6, 2));
 
-    private void prepareHorses() {
-        horses.clear();
-        horsePanel.removeAll();
-
-        int lanes = (Integer) laneSpinner.getValue();
-        trackLength = (Integer) lengthSpinner.getValue();
-
-        breedCombos = new ArrayList<>();
-        colorCombos = new ArrayList<>();
-        saddleCombos = new ArrayList<>();
-        symbolCombos = new ArrayList<>();
-
-        for (int i = 0; i < lanes; i++) {
-            JPanel row = new JPanel(new GridLayout(1, 4));
-            row.setBorder(BorderFactory.createTitledBorder("Horse " + (i + 1)));
+            JTextField horseName = new JTextField();
+            add(new JLabel("Horse Name:"));
+            add(horseName);
 
             JComboBox<String> breed = new JComboBox<>(new String[]{"Thoroughbred", "Arabian", "Quarter Horse"});
+            add(new JLabel("Breed:"));
+            add(breed);
+
             JComboBox<String> color = new JComboBox<>(new String[]{"Brown", "Black", "Grey", "White"});
-            JComboBox<String> saddle = new JComboBox<>(new String[]{"Standard", "Lightweight", "Colorful"});
-            JComboBox<String> symbol = new JComboBox<>(new String[]{"🐎", "🦄", "🏇", "A", "B", "C"});
+            add(new JLabel("Coat Color:"));
+            add(color);
 
-            breedCombos.add(breed);
-            colorCombos.add(color);
-            saddleCombos.add(saddle);
-            symbolCombos.add(symbol);
+            JComboBox<String> symbol = new JComboBox<>(new String[]{"🐎", "🦄", "🏇"});
+            add(new JLabel("Symbol:"));
+            add(symbol);
 
-            row.add(breed);
-            row.add(color);
-            row.add(saddle);
-            row.add(symbol);
-            horsePanel.add(row);
+            JButton addHorseButton = new JButton("Add Horse");
+            addHorseButton.addActionListener(e -> {
+                String horseInfo = horseName.getText() + " (" + breed.getSelectedItem() + ") " + symbol.getSelectedItem();
+                horses.add(horseInfo);
+                horseSelect.addItem(horseInfo);
+                statsArea.append(horseInfo + " added.\n");
+                horseName.setText("");
+            });
+            add(addHorseButton);
         }
-
-        JButton applyButton = new JButton("Apply Customization");
-        applyButton.addActionListener(e -> applyHorseData());
-        horsePanel.add(applyButton);
-        horsePanel.revalidate();
-        horsePanel.repaint();
     }
 
-    private void applyHorseData() {
-        horses.clear();
-        for (int i = 0; i < breedCombos.size(); i++) {
-            String breed = (String) breedCombos.get(i).getSelectedItem();
-            String saddle = (String) saddleCombos.get(i).getSelectedItem();
-            char symbol = ((String) symbolCombos.get(i).getSelectedItem()).charAt(0);
-            double confidence = 0.6;
-            if (breed.equals("Thoroughbred")) confidence += 0.1;
-            if (saddle.equals("Lightweight")) confidence += 0.05;
-            Horse h = new Horse(symbol, "Horse" + (i + 1), Math.min(confidence, 1.0));
-            horses.add(h);
+    class StatisticsPanel extends JPanel {
+        public StatisticsPanel() {
+            setBorder(BorderFactory.createTitledBorder("Statistics & Analytics"));
+            setLayout(new BorderLayout());
+            statsArea = new JTextArea();
+            statsArea.setEditable(false);
+            add(new JScrollPane(statsArea), BorderLayout.CENTER);
         }
-        startButton.setEnabled(true);
-        raceTrackPanel.repaint();
     }
 
-    private void drawTrack(Graphics g) {
-        int lanes = horses.size();
-        int width = getWidth() - 250;
-        int startX = 100;
-        String shape = (String) trackShapeCombo.getSelectedItem();
+    class BettingPanel extends JPanel {
+        public BettingPanel() {
+            setBorder(BorderFactory.createTitledBorder("Virtual Betting"));
+            setLayout(new GridLayout(6, 1));
 
-        g.setColor(new Color(240, 255, 240));
-        g.fillRect(0, 0, getWidth(), getHeight());
-        g.setColor(Color.RED);
-        g.fillRect(startX + width, 0, 5, getHeight());
+            horseSelect = new JComboBox<>();
+            JTextField betAmount = new JTextField();
 
-        for (int i = 0; i < lanes; i++) {
-            int y = (i + 1) * laneHeight;
-            g.setColor(Color.LIGHT_GRAY);
-            g.fillRoundRect(startX - 5, y - 30, width + 10, 45, 10, 10);
-            g.setColor(Color.DARK_GRAY);
-            g.drawRoundRect(startX - 5, y - 30, width + 10, 45, 10, 10);
+            JButton placeBetButton = new JButton("Place Bet");
+            placeBetButton.addActionListener(e -> {
+                String selectedHorse = (String) horseSelect.getSelectedItem();
+                int amount = Integer.parseInt(betAmount.getText());
+                bettingSystem.placeBet(selectedHorse, amount);
+                JOptionPane.showMessageDialog(null, "Bet placed on " + selectedHorse + " for $" + amount);
+            });
 
-            g.setColor(Color.BLACK);
-            g.setFont(new Font("SansSerif", Font.BOLD, 16));
-            g.drawString("Lane " + (i + 1), 20, y - 5);
-
-            if (i < horses.size()) {
-                Horse h = horses.get(i);
-                int dx = h.getDistanceTravelled();
-                int x = switch (shape) {
-                    case "Zigzag" -> startX + (int) (dx * pixelScale * Math.sin(dx % 2 == 0 ? 1 : -1));
-                    case "Oval" -> startX + (int) (dx * pixelScale * 0.95);
-                    case "Figure-eight" -> startX + (int) (dx * pixelScale * 0.9);
-                    case "Custom" -> startX + (dx * pixelScale);
-                    default -> startX + (dx * pixelScale);
-                };
-                g.setFont(new Font("Segoe UI Emoji", Font.BOLD, 20));
-                g.drawString(h.getSymbol() + " " + h.getName(), x, y);
-                if (h.hasFallen()) {
-                    g.setColor(Color.RED);
-                    g.drawString("×", x, y - 15);
-                }
-            }
+            add(new JLabel("Select Horse:"));
+            add(horseSelect);
+            add(new JLabel("Bet Amount:"));
+            add(betAmount);
+            add(placeBetButton);
         }
+    }
 
-        g.setFont(new Font("SansSerif", Font.PLAIN, 14));
-        g.drawString("Track Shape: " + shape, 20, 20);
+    class RaceControlPanel extends JPanel {
+        public RaceControlPanel() {
+            JButton startRaceButton = new JButton("Start Race");
+            startRaceButton.addActionListener(e -> startRace());
+            add(startRaceButton);
+
+            JButton resetRaceButton = new JButton("Reset Race");
+            resetRaceButton.addActionListener(e -> resetRace());
+            add(resetRaceButton);
+        }
     }
 
     private void startRace() {
-        raceTimer = new Timer(150, null);
-        raceTimer.addActionListener(e -> {
-            boolean finished = false;
-            for (Horse h : horses) {
-                if (!h.hasFallen() && Math.random() < h.getConfidence()) h.moveForward();
-                if (!h.hasFallen() && Math.random() < 0.1 * h.getConfidence() * h.getConfidence()) h.fall();
-                if (h.getDistanceTravelled() >= trackLength) finished = true;
-            }
-            raceTrackPanel.repaint();
-            if (finished) {
-                raceTimer.stop();
-                JOptionPane.showMessageDialog(this, "Race Finished!", "Result", JOptionPane.INFORMATION_MESSAGE);
-            }
-        });
-        for (Horse h : horses) h.goBackToStart();
+        if (horses.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Add horses before starting the race.");
+            return;
+        }
+        horsePositions = new int[horses.size()];
+        raceRunning = true;
         raceTimer.start();
+    }
+
+    private void resetRace() {
+        horses.clear();
+        horseSelect.removeAllItems();
+        statsArea.setText("");
+        horsePositions = null;
+        raceRunning = false;
+        raceVisualPanel.repaint();
+    }
+
+    private void drawRace(Graphics g) {
+        if (horsePositions == null || horses.isEmpty()) return;
+
+        int laneHeight = raceVisualPanel.getHeight() / horses.size();
+
+        for (int i = 0; i < horsePositions.length; i++) {
+            g.drawLine(0, laneHeight * i, raceVisualPanel.getWidth(), laneHeight * i);
+            int yOffset = 0;
+
+            switch (trackShape) {
+                case "Zigzag" -> yOffset = (horsePositions[i] / 50) % 2 == 0 ? -10 : 10;
+                case "Oval" -> yOffset = (int) (10 * Math.sin(Math.toRadians(horsePositions[i])));
+                case "Figure-eight" -> yOffset = (int) (15 * Math.sin(Math.toRadians(2 * horsePositions[i])));
+            }
+
+            g.drawString(horses.get(i), horsePositions[i], (laneHeight * i) + (laneHeight / 2) + yOffset);
+        }
+    }
+
+    private void updateRace() {
+        if (!raceRunning) return;
+
+        boolean raceFinished = false;
+
+        for (int i = 0; i < horsePositions.length; i++) {
+            horsePositions[i] += (int) (Math.random() * 10);
+            if (horsePositions[i] >= raceVisualPanel.getWidth() - 100) {
+                raceFinished = true;
+                raceTimer.stop();
+                raceRunning = false;
+                JOptionPane.showMessageDialog(this, horses.get(i) + " wins the race!\nWinnings: $" + bettingSystem.payout(horses.get(i)));
+                break;
+            }
+        }
+
+        raceVisualPanel.repaint();
     }
 
     public static void main(String[] args) {
