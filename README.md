@@ -42,7 +42,7 @@ HorseRaceSimulator/
 
 ---
 
-## ⚡ How to Run Locally
+##  How to Run Locally
 
 ### 1. Clone the Repository
 
@@ -96,7 +96,7 @@ java RaceGUI
 
 ---
 
-## 🛆 Project Dependencies
+## Project Dependencies
 
 - Java JDK 8+
 - Java Swing (built-in)
@@ -105,7 +105,7 @@ No additional libraries or frameworks needed!
 
 ---
 
-## 🔗 Notes
+## Notes
 
 - No Maven or Gradle required.
 - CSV files will be auto-generated.
