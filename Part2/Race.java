@@ -1,5 +1,6 @@
 import java.util.List;
 import java.util.ArrayList;
+
 public class Race {
     private List<Horse> horses;
     private Track track;
@@ -17,17 +18,18 @@ public class Race {
         this.elapsedTime = 0;
     }
 
+    // Updates the race state each frame
     public void update(double deltaTime) {
         if (finished) return;
 
         elapsedTime += deltaTime;
 
-        double conditionFactor = track.getConditionSpeedFactor(); // Учитываем погодный коэффициент!
+        double conditionFactor = track.getConditionSpeedFactor();
 
         for (Horse horse : horses) {
             if (!horse.hasFallen() && horse.getDistanceTravelled() < track.getTrackLength()) {
                 double random = Math.random();
-                double fallChance = 0.001 * (1.0 - horse.getConfidence()) * track.getFallRiskMultiplier(); // Погода также влияет на шанс упасть
+                double fallChance = 0.001 * (1.0 - horse.getConfidence()) * track.getFallRiskMultiplier();
 
                 if (random < fallChance) {
                     horse.fall();
@@ -38,9 +40,11 @@ public class Race {
                 } else {
                     horse.moveForward(horse.getBaseSpeed() * deltaTime * conditionFactor);
                 }
-            }
-            if (!horse.hasFallen() && horse.getDistanceTravelled() >= track.getTrackLength() && horse.getFinishTime() < 0) {
-                horse.setFinishTime(elapsedTime); // Устанавливаем её финишное время
+
+                // Check immediately if horse finishes after movement
+                if (!horse.hasFallen() && horse.getDistanceTravelled() >= track.getTrackLength() && horse.getFinishTime() < 0) {
+                    horse.setFinishTime(elapsedTime);
+                }
             }
         }
 
@@ -48,72 +52,80 @@ public class Race {
             finished = true;
             winner = getWinner();
             if (winner != null) {
-                winningTime = elapsedTime;
+                winningTime = winner.getFinishTime();
             }
         }
     }
 
+    // Generates a summary of the race
     public List<String> getRaceSummary() {
         List<String> summary = new ArrayList<>();
         for (Horse horse : horses) {
             String status;
             if (horse.hasFallen()) {
                 status = "Fell";
-                summary.add(horse.getName() + " - " + status);
             } else if (horse.getFinishTime() >= 0) {
-                status = "Finished";
-                summary.add(horse.getName() + " - " + status + ", Time: " + String.format("%.2f", horse.getFinishTime()) + "s");
+                status = "Finished, Time: " + String.format("%.2f", horse.getFinishTime()) + "s";
             } else {
                 status = "Incomplete";
-                summary.add(horse.getName() + " - " + status);
             }
+            summary.add(horse.getName() + " - " + status);
         }
         return summary;
     }
 
-
+    // Checks if the race is finished
     public boolean isFinished() {
         for (Horse horse : horses) {
             if (!horse.hasFallen() && horse.getDistanceTravelled() < track.getTrackLength()) {
-                return false; // есть хотя бы одна лошадь, которая ещё бежит
+                return false; // At least one horse is still running
             }
         }
-        return true; // все лошади либо упали, либо дошли до финиша
+        return true; // All horses either finished or fell
     }
 
+    // Determines the winner (fastest horse that finished)
     public Horse getWinner() {
         Horse best = null;
-        double maxDistance = -1;
+        double bestTime = Double.MAX_VALUE;
 
         for (Horse horse : horses) {
-            if (!horse.hasFallen() && horse.getDistanceTravelled() > maxDistance) {
-                best = horse;
-                maxDistance = horse.getDistanceTravelled();
+            if (!horse.hasFallen() && horse.getFinishTime() >= 0) {
+                if (horse.getFinishTime() < bestTime) {
+                    best = horse;
+                    bestTime = horse.getFinishTime();
+                }
             }
         }
-        return best; // возвращаем лошадь, прошедшую дальше всех
+        return best;
     }
 
+    // Returns winning time
     public double getWinningTime() {
         return winningTime;
     }
 
+    // Returns winner horse
     public Horse getWinnerHorse() {
         return winner;
     }
 
-     public void recordResults(RaceStatistics stats, Leaderboard lb) {
-         if (winner == null) {
-             System.out.println("No winner to record.");
-             return;
-         }
+    // Returns elapsed race time
+    public double getElapsedTime() {
+        return elapsedTime;
+    }
 
-         String trackKey = track.getTrackShape() + "-" + track.getWeatherCondition();
+    // Records the race results into statistics and leaderboard
+    public void recordResults(RaceStatistics stats, Leaderboard lb) {
+        if (winner == null) {
+            System.out.println("No winner to record.");
+            return;
+        }
 
-         winner.recordRace(winningTime, 1, trackKey);
-         lb.updateLeaderboard(winner.getName(), winner.getWins());
+        String trackKey = track.getTrackShape() + "-" + track.getWeatherCondition();
 
-         stats.updateRecord(trackKey, winningTime);
-     }
-
+        winner.recordRace(winningTime, 1, trackKey);
+        lb.updateLeaderboard(winner.getName(), winner.getWins());
+        stats.updateRecord(trackKey, winningTime);
+    }
 }

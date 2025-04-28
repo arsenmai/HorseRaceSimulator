@@ -1,17 +1,23 @@
 import java.io.*;
 import java.nio.file.*;
-import java.util.*;
 
+/**
+ * Analytics class for recording race results to a file.
+ */
 public class Analytics {
     private static final String FILE = "race_results.csv";
 
-    // Just record the winner's name on each line
+    /**
+     * Appends the winner's name to the race results file.
+     * @param winnerName the name of the horse that won the race
+     */
     public void recordRace(String winnerName) {
         try {
             Files.write(
                 Paths.get(FILE),
                 (winnerName + "\n").getBytes(),
-                StandardOpenOption.CREATE, StandardOpenOption.APPEND
+                StandardOpenOption.CREATE, 
+                StandardOpenOption.APPEND
             );
         } catch (IOException e) {
             e.printStackTrace();

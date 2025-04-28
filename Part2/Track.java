@@ -1,5 +1,5 @@
-/*
- * Track.java - Encapsulates track configuration and condition effects
+/**
+ * Represents the race track configuration including lanes, length, shape, and weather effects.
  */
 public class Track {
     private int laneCount;
@@ -14,33 +14,59 @@ public class Track {
         this.weather = weather;
     }
 
-    public int getLaneCount() { return laneCount; }
-    public void setLaneCount(int c) { laneCount = c; }
+    public int getLaneCount() {
+        return laneCount;
+    }
 
-    public int getTrackLength() { return trackLength; }
-    public void setTrackLength(int l) { trackLength = l; }
+    public void setLaneCount(int laneCount) {
+        this.laneCount = laneCount;
+    }
 
-    public String getTrackShape() { return shape; }
-    public void setTrackShape(String s) { shape = s; }
+    public int getTrackLength() {
+        return trackLength;
+    }
 
-    public String getWeatherCondition() { return weather; }
-    public void setWeatherCondition(String w) { weather = w; }
+    public void setTrackLength(int trackLength) {
+        this.trackLength = trackLength;
+    }
 
-    // Speed factor based on weather
+    public String getTrackShape() {
+        return shape;
+    }
+
+    public void setTrackShape(String shape) {
+        this.shape = shape;
+    }
+
+    public String getWeatherCondition() {
+        return weather;
+    }
+
+    public void setWeatherCondition(String weather) {
+        this.weather = weather;
+    }
+
+    /**
+     * Returns the speed factor based on the current weather condition.
+     * @return speed adjustment multiplier
+     */
     public double getConditionSpeedFactor() {
         switch (weather) {
             case "Muddy": return 0.7;
-            case "Icy":   return 0.9;
-            default:       return 1.0;
+            case "Icy": return 0.9;
+            default: return 1.0;
         }
     }
 
-    // Fall risk multiplier based on weather
+    /**
+     * Returns the fall risk multiplier based on the current weather condition.
+     * @return fall risk adjustment multiplier
+     */
     public double getFallRiskMultiplier() {
         switch (weather) {
-            case "Icy":   return 1.5;
+            case "Icy": return 1.5;
             case "Muddy": return 1.2;
-            default:       return 1.0;
+            default: return 1.0;
         }
     }
 }
